@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"gonum.org/v1/gonum/floats"
+	"math"
 	"math/rand"
 	"sync"
 	"time"
-	"math"
 )
 
 const vecLen = 256
@@ -14,7 +14,7 @@ const tasks = 5e5
 const threads = 8
 const workFactor = tasks / threads
 
-func initDB (container *[tasks][]float64) {
+func initDB(container *[tasks][]float64) {
 	for i := 0; i < tasks; i++ {
 		container[i] = getVector()
 	}
@@ -58,8 +58,8 @@ func main() {
 	var group sync.WaitGroup
 	for wid := 0; wid < threads; wid++ {
 
-		from :=  wid * workFactor
-		to 	 := from + workFactor
+		from := wid * workFactor
+		to := from + workFactor
 
 		group.Add(1)
 		go linearSearch(&candidate, &container, &results, from, to, &group)
@@ -71,6 +71,6 @@ func main() {
 
 	fmt.Println(end)
 	fmt.Println("done in:", took)
-	fmt.Println("took ~", took / tasks, "per iteration")
+	fmt.Println("took ~", took/tasks, "per iteration")
 
 }
