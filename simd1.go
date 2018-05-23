@@ -2,35 +2,56 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"gonum.org/v1/gonum/floats"
 	"math/rand"
-	"time"
 	"sync"
+	"time"
+	"math"
 )
 
 const vecLen = 256
-const tasks = 1e9
+const tasks = 5e5
 const threads = 8
 const workFactor = tasks / threads
 
+func initDB (container *[tasks][]float64) {
+	for i := 0; i < tasks; i++ {
+		container[i] = getVector()
+	}
+}
+
+func linearSearch(vect *[]float64, db *[tasks][]float64, results *[tasks]float64, from int, to int, group *sync.WaitGroup) {
+	for i := from; i < to; i++ {
+		results[i] = floats.Dot(*vect, db[i])
+	}
+	group.Done()
+}
+
+func getVector() (ret []float64) {
+	for i := 0; i < vecLen; i++ {
+		ret = append(ret, rand.Float64())
+	}
+	return ret
+}
+
 func main() {
-	fmt.Printf("Running %.0f tasks using %d threads\n", tasks, threads)
 
 	if math.Mod(tasks, threads) != 0 {
 		panic("times % maxWid should be 0")
 	}
 
-	var vect1 	[]float64
-	var vect2 	[]float64
-	var results [tasks]float64
-
-	for i := 0; i < vecLen; i++ {
-		vect1 = append(vect1, rand.Float64())
-		vect2 = append(vect2, rand.Float64())
-	}
-
 	start := time.Now()
+	var container [tasks][]float64
+	initDB(&container)
+	end := time.Now()
+
+	fmt.Println("initDB with", len(container), "elements took", end.Sub(start))
+	fmt.Printf("\nRunning %.2e tasks using %d threads\n", tasks, threads)
+
+	var results [tasks]float64
+	candidate := getVector()
+
+	start = time.Now()
 
 	fmt.Println(start)
 
@@ -41,21 +62,15 @@ func main() {
 		to 	 := from + workFactor
 
 		group.Add(1)
-		go (func(from int, to int, group *sync.WaitGroup, results *[tasks]float64) {
-			for i := from; i < to; i++ {
-				results[i] = floats.Dot(vect1, vect2)
-			}
-			group.Done()
-		})(from, to, &group, &results)
+		go linearSearch(&candidate, &container, &results, from, to, &group)
 	}
 
 	group.Wait()
-	end := time.Now()
+	end = time.Now()
 	took := end.Sub(start)
 
 	fmt.Println(end)
 	fmt.Println("done in:", took)
 	fmt.Println("took ~", took / tasks, "per iteration")
-	fmt.Println("resulting multiplication:", results[15000000])
 
 }
