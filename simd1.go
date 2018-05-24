@@ -10,7 +10,7 @@ import (
 )
 
 const vecLen = 256
-const tasks = 1e5
+const tasks = 5e5
 const threads = 8
 const workFactor = tasks / threads
 
@@ -21,7 +21,7 @@ func initDB(container *[tasks][]float64) {
 }
 
 func linearSearch(vect *[]float64, db *[tasks][]float64, results *[tasks]float64, from int, to int, group *sync.WaitGroup) {
-	for i := range db[from:to] {
+	for i := from; i < to; i++ {
 		results[i] = floats.Dot(db[i], *vect)
 	}
 	group.Done()
@@ -72,6 +72,6 @@ func main() {
 	fmt.Println(end)
 	fmt.Println("done in:", took)
 	fmt.Println("took ~", took/tasks, "per iteration")
-	fmt.Println("Some results:", results[0:8])
+	fmt.Println("Some results:", results[int(tasks - 8):int(tasks)])
 
 }
