@@ -10,9 +10,20 @@ import (
 )
 
 const vecLen = 256
-const tasks = 5e5
+const tasks = 2.5e5
 const threads = 8
 const workFactor = tasks / threads
+const threshold = 0.35
+
+func toHuman(val float64) string {
+	sufs := [5]string {"", "K", "M", "G", "T"}
+	i := val
+	idx := 0
+	for ; i > 1024; i /= 1024 {
+		idx++
+	}
+	return fmt.Sprintf("%.2f%sB", i, sufs[idx])
+}
 
 func initDB(container *[tasks][]float64) {
 	for i := 0; i < tasks; i++ {
@@ -28,10 +39,19 @@ func linearSearch(vect *[]float64, db *[tasks][]float64, results *[tasks]float64
 }
 
 func getVector() (ret []float64) {
+	var arr [vecLen]float64
 	for i := 0; i < vecLen; i++ {
-		ret = append(ret, rand.Float64())
+		arr[i] = rand.Float64()
 	}
+	ret = arr[:]
+	floats.Mul(ret, ret)
+	scaleFactor := 1 / math.Sqrt(floats.Sum(ret))
+	floats.Scale(scaleFactor, ret)
 	return ret
+}
+
+func passesThreshold(score float64) bool {
+	return score > threshold
 }
 
 func main() {
@@ -45,15 +65,13 @@ func main() {
 	initDB(&container)
 	end := time.Now()
 
-	fmt.Println("initDB with", len(container), "elements took", end.Sub(start))
-	fmt.Printf("\nRunning %.2e tasks using %d threads\n", tasks, threads)
+	fmt.Println("initDB with", len(container), "elements took", end.Sub(start), "and", toHuman(8 * 256 * tasks), "Memory")
+	fmt.Printf("\nRunning %.2e tasks using %d threads and\n", tasks, threads)
 
 	var results [tasks]float64
 	candidate := getVector()
 
 	start = time.Now()
-
-	fmt.Println(start)
 
 	var group sync.WaitGroup
 	for wid := 0; wid < threads; wid++ {
@@ -69,9 +87,23 @@ func main() {
 	end = time.Now()
 	took := end.Sub(start)
 
-	fmt.Println(end)
 	fmt.Println("done in:", took)
 	fmt.Println("took ~", took/tasks, "per iteration")
-	fmt.Println("Some results:", results[int(tasks - 8):int(tasks)])
+	fmt.Println("Some results:", results[:8])
+
+	start = time.Now()
+	var matches []int
+	matches, err := floats.Find(matches, passesThreshold, results[:], -1)
+
+	if (err != nil) {
+		panic(err)
+	}
+
+	end = time.Now()
+	took = end.Sub(start)
+
+	fmt.Println("Found", len(matches), "results in", took)
+	fmt.Println("Took ~", took/tasks, "per count query")
+	fmt.Println("Some match indices:", matches[0:8])
 
 }
