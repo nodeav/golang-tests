@@ -10,10 +10,10 @@ import (
 )
 
 const vecLen = 256
-const tasks = 2.5e5
+const tasks = 1e6
+const threshold = 0.35
 const threads = 8
 const workFactor = tasks / threads
-const threshold = 0.35
 
 func toHuman(val float64) string {
 	sufs := [5]string {"", "K", "M", "G", "T"}
@@ -65,8 +65,8 @@ func main() {
 	initDB(&container)
 	end := time.Now()
 
-	fmt.Println("initDB with", len(container), "elements took", end.Sub(start), "and", toHuman(8 * 256 * tasks), "Memory")
-	fmt.Printf("\nRunning %.2e tasks using %d threads and\n", tasks, threads)
+	fmt.Println("\ninitDB with", len(container), "elements took", end.Sub(start), "and", toHuman(8 * 256 * tasks), "Memory")
+	fmt.Printf("Running %.2e tasks using %d threads\n", tasks, threads)
 
 	var results [tasks]float64
 	candidate := getVector()
@@ -87,8 +87,8 @@ func main() {
 	end = time.Now()
 	took := end.Sub(start)
 
-	fmt.Println("done in:", took)
-	fmt.Println("took ~", took/tasks, "per iteration")
+	fmt.Println("done calculating dot products in:", took)
+	fmt.Println("took ~", took/tasks, "per multiplication")
 	fmt.Println("Some results:", results[:8])
 
 	start = time.Now()
@@ -102,8 +102,8 @@ func main() {
 	end = time.Now()
 	took = end.Sub(start)
 
-	fmt.Println("Found", len(matches), "results in", took)
+	fmt.Println("Found", len(matches), "threshold-passing results in", took)
 	fmt.Println("Took ~", took/tasks, "per count query")
-	fmt.Println("Some match indices:", matches[0:8])
+	fmt.Println("Some match indices:", matches[0:8], "\n")
 
 }
