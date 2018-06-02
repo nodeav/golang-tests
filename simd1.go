@@ -2,9 +2,8 @@ package main
 
 import (
 	"fmt"
-	//"gonum.org/v1/gonum/floats"
+	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/blas/blas64"
-	//"gonum.org/v1/netlib/blas/netlib"
 	"math"
 	"math/rand"
 	"sync"
@@ -12,8 +11,8 @@ import (
 )
 
 const vecLen = 256
-const tasks = 5e5
-const runs = 1e4
+const tasks = 1e5
+const runs = 1e3
 const threads = 8
 const threshold = 0.4
 const workFactor = tasks / threads
@@ -73,9 +72,22 @@ func doSearch(candidate *blas64.Vector, container *[tasks]blas64.Vector, results
 	group.Wait()
 }
 
+func filterResults(results [tasks]float64) (matches []int) {
+	matches, err := floats.Find(matches, passesThreshold, results[:], -1)
+
+	if (err != nil) {
+		panic(err)
+	}
+
+	return matches
+}
+
 func main() {
 
-	//blas64.Use(netlib.Implementation{})
+	fmt.Println("Initializing vectors DB (this might take a while) for", toHuman(tasks, true), "vectors")
+	fmt.Println("Going to use", toHuman(8 * 256 * tasks, false)+"B", "Memory for DB")
+	fmt.Println("Going to use", toHuman(8 * tasks, false)+"B", "Memory for matches array")
+	fmt.Println("Total RAM not counting program and GC overheads:", toHuman(8 * (256 + 1) * tasks, false)+"B")
 
 	if math.Mod(tasks, threads) != 0 {
 		panic("tasks % threads should be 0")
@@ -85,9 +97,8 @@ func main() {
 	var container [tasks]blas64.Vector
 	initDB(container[:])
 	end := time.Now()
-
-	fmt.Println("\ninitDB with", len(container), "elements took", end.Sub(start), "and",
-		toHuman(8 * 256 * tasks, false), "Memory")
+	took := end.Sub(start)
+	fmt.Println("Initialized DB (took", took, "total and", took / tasks, "per vector)")
 
 	fmt.Printf("Running %s runs of %s tasks (total %s dot products) using %d threads\n",
 		toHuman(runs, true), toHuman(tasks, true), toHuman(totalDotProducts, true), threads)
@@ -96,38 +107,39 @@ func main() {
 	candidate := getVector()
 
 	start = time.Now()
+	var searchTook time.Duration
+	var filteringTook time.Duration
+	var totalMatches int64
+
 	for i := 0; i < runs; i++ {
 		if i % 10 == 0 || i+1 == runs {
 			fmt.Printf("\rRunning iter #%d", i)
 		}
+		// Measure searching
+		temp := time.Now()
 		doSearch(&candidate, &container, &results)
+		searchTook += time.Now().Sub(temp)
+
+		// Measure filtering
+		temp = time.Now()
+		totalMatches += int64(len(filterResults(results)))
+		filteringTook += time.Now().Sub(temp)
 	}
 	end = time.Now()
-	took := end.Sub(start)
+	totalTook := end.Sub(start)
 
-	fmt.Println("\rdone calculating", toHuman(totalDotProducts, true), "dot products in:", took)
-	fmt.Println("took ~", took/(totalDotProducts), "per multiplication")
-	fmt.Println("Some results from last run:", results[:8])
-
-	//start = time.Now()
-	//var matches []int
-	//matches, err := floats.Find(matches, passesThreshold, results[:], -1)
-	//
-	//if (err != nil) {
-	//	panic(err)
-	//}
-	//
-	//end = time.Now()
-	//took = end.Sub(start)
-	//
-	//someMatches := matches[0:8]
-	//fmt.Println("Found", len(matches), "threshold-passing results in", took)
-	//fmt.Println("Took ~", took/tasks, "per count query")
-	//fmt.Println("Some match indices:", someMatches, "\n")
-	//fmt.Print("Some match scores: ")
-	//for _, k := range someMatches {
-	//	fmt.Print(k, ": ", results[k], ", ")
-	//}
-	//fmt.Println()
-
+	fmt.Println()
+	fmt.Println()
+	fmt.Println("\rdone calculating", toHuman(totalDotProducts, true), "dot products in:", searchTook)
+	fmt.Println()
+	fmt.Println("Took ~", searchTook/totalDotProducts, "per dor product")
+	fmt.Println("First 4 results from last run:", results[:4])
+	fmt.Println()
+	fmt.Println("Found a total of", toHuman(float64(totalMatches), true), "threshold-passing results")
+	fmt.Println("Found on average", toHuman(float64(totalMatches/runs), true), "threshold-passing results per run")
+	fmt.Println("Filteration took ~", totalTook, "total")
+	fmt.Println("Took ~", totalTook/runs, "per run")
+	fmt.Println()
+	fmt.Println("Total time elapsed:", totalTook)
+	fmt.Println("Total time per vector in DB:", totalTook / totalDotProducts)
 }
