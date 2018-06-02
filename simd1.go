@@ -11,8 +11,8 @@ import (
 )
 
 const vecLen = 256
-const tasks = 2.5e5
-const threshold = 0.43
+const tasks = 5e5
+const threshold = 0.4
 const threads = 8
 const workFactor = tasks / threads
 
