@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"gonum.org/v1/gonum/floats"
+	"gonum.org/v1/gonum/blas/blas64"
 	"math"
 	"math/rand"
 	"sync"
@@ -10,8 +11,8 @@ import (
 )
 
 const vecLen = 256
-const tasks = 1e6
-const threshold = 0.35
+const tasks = 2.5e5
+const threshold = 0.43
 const threads = 8
 const workFactor = tasks / threads
 
@@ -25,29 +26,27 @@ func toHuman(val float64) string {
 	return fmt.Sprintf("%.2f%sB", i, sufs[idx])
 }
 
-func initDB(container *[tasks][]float64) {
+func initDB(container []blas64.Vector) {
 	for i := 0; i < tasks; i++ {
 		container[i] = getVector()
 	}
 }
 
-func linearSearch(vect *[]float64, db *[tasks][]float64, results *[tasks]float64, from int, to int, group *sync.WaitGroup) {
+func linearSearch(vect *blas64.Vector, db *[tasks]blas64.Vector, results *[tasks]float64, from int, to int, group *sync.WaitGroup) {
 	for i := from; i < to; i++ {
-		results[i] = floats.Dot(db[i], *vect)
+		results[i] = blas64.Dot(1, *vect, db[i])
 	}
 	group.Done()
 }
 
-func getVector() (ret []float64) {
+func getVector() (ret blas64.Vector) {
 	var arr [vecLen]float64
 	for i := 0; i < vecLen; i++ {
 		arr[i] = rand.Float64()
 	}
-	ret = arr[:]
-	floats.Mul(ret, ret)
-	scaleFactor := 1 / math.Sqrt(floats.Sum(ret))
-	floats.Scale(scaleFactor, ret)
-	return ret
+	vect := blas64.Vector{Inc: 1, Data: arr[:]}
+	blas64.Nrm2(1, vect)
+	return vect
 }
 
 func passesThreshold(score float64) bool {
@@ -61,8 +60,8 @@ func main() {
 	}
 
 	start := time.Now()
-	var container [tasks][]float64
-	initDB(&container)
+	var container [tasks]blas64.Vector
+	initDB(container[:])
 	end := time.Now()
 
 	fmt.Println("\ninitDB with", len(container), "elements took", end.Sub(start), "and", toHuman(8 * 256 * tasks), "Memory")
@@ -102,8 +101,14 @@ func main() {
 	end = time.Now()
 	took = end.Sub(start)
 
+	someMatches := matches[0:8]
 	fmt.Println("Found", len(matches), "threshold-passing results in", took)
 	fmt.Println("Took ~", took/tasks, "per count query")
-	fmt.Println("Some match indices:", matches[0:8], "\n")
+	fmt.Println("Some match indices:", someMatches, "\n")
+	fmt.Print("Some match scores: ")
+	for _, k := range someMatches {
+		fmt.Print(k, ": ", results[k], ", ")
+	}
+	fmt.Println()
 
 }
