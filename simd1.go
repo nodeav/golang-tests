@@ -99,7 +99,7 @@ func main() {
 	end := time.Now()
 	took := end.Sub(start)
 	fmt.Println("Initialized DB (took", took, "total and", took / tasks, "per vector)")
-
+	fmt.Println()
 	fmt.Printf("Running %s runs of %s tasks (total %s dot products) using %d threads\n",
 		toHuman(runs, true), toHuman(tasks, true), toHuman(totalDotProducts, true), threads)
 
@@ -112,8 +112,11 @@ func main() {
 	var totalMatches int64
 
 	for i := 0; i < runs; i++ {
-		if i % 10 == 0 || i+1 == runs {
-			fmt.Printf("\rRunning iter #%d", i)
+		if i % 10 == 0 {
+			fmt.Printf("Running iter #%d\r", i)
+		}
+		if i+1 == runs {
+			fmt.Print("<----- Done ----->")
 		}
 		// Measure searching
 		temp := time.Now()
@@ -132,7 +135,7 @@ func main() {
 	fmt.Println()
 	fmt.Println("\rdone calculating", toHuman(totalDotProducts, true), "dot products in:", searchTook)
 	fmt.Println()
-	fmt.Println("Took ~", searchTook/totalDotProducts, "per dor product")
+	fmt.Println("Took ~", searchTook/totalDotProducts, "per dot product")
 	fmt.Println("First 4 results from last run:", results[:4])
 	fmt.Println()
 	fmt.Println("Found a total of", toHuman(float64(totalMatches), true), "threshold-passing results")
