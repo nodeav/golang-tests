@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"gonum.org/v1/gonum/floats"
+	//"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/blas/blas64"
+	//"gonum.org/v1/netlib/blas/netlib"
 	"math"
 	"math/rand"
 	"sync"
@@ -12,18 +13,23 @@ import (
 
 const vecLen = 256
 const tasks = 5e5
-const threshold = 0.4
+const runs = 1e4
 const threads = 8
+const threshold = 0.4
 const workFactor = tasks / threads
+const totalDotProducts = runs * tasks
 
-func toHuman(val float64) string {
+func toHuman(val float64, base10 bool) string {
 	sufs := [5]string {"", "K", "M", "G", "T"}
 	i := val
 	idx := 0
-	for ; i > 1024; i /= 1024 {
+	var base float64 = 1024
+	if base10 {base = 1000}
+
+	for ; i > base; i /= base {
 		idx++
 	}
-	return fmt.Sprintf("%.2f%sB", i, sufs[idx])
+	return fmt.Sprintf("%.2f%s", i, sufs[idx])
 }
 
 func initDB(container []blas64.Vector) {
@@ -53,25 +59,7 @@ func passesThreshold(score float64) bool {
 	return score > threshold
 }
 
-func main() {
-
-	if math.Mod(tasks, threads) != 0 {
-		panic("times % maxWid should be 0")
-	}
-
-	start := time.Now()
-	var container [tasks]blas64.Vector
-	initDB(container[:])
-	end := time.Now()
-
-	fmt.Println("\ninitDB with", len(container), "elements took", end.Sub(start), "and", toHuman(8 * 256 * tasks), "Memory")
-	fmt.Printf("Running %.2e tasks using %d threads\n", tasks, threads)
-
-	var results [tasks]float64
-	candidate := getVector()
-
-	start = time.Now()
-
+func doSearch(candidate *blas64.Vector, container *[tasks]blas64.Vector, results *[tasks]float64) {
 	var group sync.WaitGroup
 	for wid := 0; wid < threads; wid++ {
 
@@ -79,36 +67,67 @@ func main() {
 		to := from + workFactor
 
 		group.Add(1)
-		go linearSearch(&candidate, &container, &results, from, to, &group)
+		go linearSearch(candidate, container, results, from, to, &group)
 	}
 
 	group.Wait()
+}
+
+func main() {
+
+	//blas64.Use(netlib.Implementation{})
+
+	if math.Mod(tasks, threads) != 0 {
+		panic("tasks % threads should be 0")
+	}
+
+	start := time.Now()
+	var container [tasks]blas64.Vector
+	initDB(container[:])
+	end := time.Now()
+
+	fmt.Println("\ninitDB with", len(container), "elements took", end.Sub(start), "and",
+		toHuman(8 * 256 * tasks, false), "Memory")
+
+	fmt.Printf("Running %s runs of %s tasks (total %s dot products) using %d threads\n",
+		toHuman(runs, true), toHuman(tasks, true), toHuman(totalDotProducts, true), threads)
+
+	var results [tasks]float64
+	candidate := getVector()
+
+	start = time.Now()
+	for i := 0; i < runs; i++ {
+		if i % 10 == 0 || i+1 == runs {
+			fmt.Printf("\rRunning iter #%d", i)
+		}
+		doSearch(&candidate, &container, &results)
+	}
 	end = time.Now()
 	took := end.Sub(start)
 
-	fmt.Println("done calculating dot products in:", took)
-	fmt.Println("took ~", took/tasks, "per multiplication")
-	fmt.Println("Some results:", results[:8])
+	fmt.Println("\rdone calculating", toHuman(totalDotProducts, true), "dot products in:", took)
+	fmt.Println("took ~", took/(totalDotProducts), "per multiplication")
+	fmt.Println("Some results from last run:", results[:8])
 
-	start = time.Now()
-	var matches []int
-	matches, err := floats.Find(matches, passesThreshold, results[:], -1)
-
-	if (err != nil) {
-		panic(err)
-	}
-
-	end = time.Now()
-	took = end.Sub(start)
-
-	someMatches := matches[0:8]
-	fmt.Println("Found", len(matches), "threshold-passing results in", took)
-	fmt.Println("Took ~", took/tasks, "per count query")
-	fmt.Println("Some match indices:", someMatches, "\n")
-	fmt.Print("Some match scores: ")
-	for _, k := range someMatches {
-		fmt.Print(k, ": ", results[k], ", ")
-	}
-	fmt.Println()
+	//start = time.Now()
+	//var matches []int
+	//matches, err := floats.Find(matches, passesThreshold, results[:], -1)
+	//
+	//if (err != nil) {
+	//	panic(err)
+	//}
+	//
+	//end = time.Now()
+	//took = end.Sub(start)
+	//
+	//someMatches := matches[0:8]
+	//fmt.Println("Found", len(matches), "threshold-passing results in", took)
+	//fmt.Println("Took ~", took/tasks, "per count query")
+	//fmt.Println("Some match indices:", someMatches, "\n")
+	//fmt.Print("Some match scores: ")
+	//for _, k := range someMatches {
+	//	fmt.Print(k, ": ", results[k], ", ")
+	//}
+	//fmt.Println()
 
 }
