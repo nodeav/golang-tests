@@ -134,11 +134,16 @@ func main() {
 	end = time.Now()
 	totalTook := end.Sub(start)
 
+	dotProductsPerSecond := float64(totalDotProducts/time.Duration.Seconds(searchTook))
+	flops := dotProductsPerSecond * vecLen
 	fmt.Println()
 	fmt.Println()
 	fmt.Println("\rdone calculating", toHuman(totalDotProducts, true), "dot products in:", searchTook)
 	fmt.Println()
 	fmt.Println("Took ~", searchTook/totalDotProducts, "per dot product")
+	fmt.Println("Calculated approx.", toHuman(dotProductsPerSecond, true)+"DP/s")
+	fmt.Println("Calculation ran with approx. "+toHuman(flops, true)+"FLOPS")
+	fmt.Println("Calculation accessed RAM with approx. "+toHuman(flops*8, true)+"B/s")
 	fmt.Println("First 4 results from last run:", results[:4])
 	fmt.Println()
 	fmt.Println("Found a total of", toHuman(float64(totalMatches), true), "threshold-passing results")
