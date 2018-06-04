@@ -11,8 +11,8 @@ import (
 )
 
 const vecLen = 256
-const tasks = 1e5
-const runs = 1e3
+const tasks = 2e5
+const runs = 1e4
 const threads = 8
 const threshold = 0.4
 const workFactor = tasks / threads
@@ -148,8 +148,8 @@ func main() {
 	fmt.Println()
 	fmt.Println("Found a total of", toHuman(float64(totalMatches), true), "threshold-passing results")
 	fmt.Println("Found on average", toHuman(float64(totalMatches/runs), true), "threshold-passing results per run")
-	fmt.Println("Filteration took ~", totalTook, "total")
-	fmt.Println("Took ~", totalTook/runs, "per run")
+	fmt.Println("Filteration took ~", filteringTook, "total")
+	fmt.Println("Took ~", filteringTook/runs, "per run")
 	fmt.Println()
 	fmt.Println("Total time elapsed:", totalTook)
 	fmt.Println("Total time per vector in DB:", totalTook/totalDotProducts)
