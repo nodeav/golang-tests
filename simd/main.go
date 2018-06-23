@@ -27,6 +27,14 @@ func main() {
 	end := time.Now()
 	initTook := end.Sub(start)
 	fmt.Println("init took", initTook)
+
+	store := &storage.Basic{}
+	start = time.Now()
+	store.Store("./db", db)
+	end = time.Now()
+	fsave := end.Sub(start)
+	fmt.Println("File saving took:", fsave)
+
 	g := sync.WaitGroup{}
 	g.Add(workers)
 	results := make([][]int, amountCands)
