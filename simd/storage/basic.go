@@ -26,7 +26,7 @@ func Readdir(basePath string) (ret []string) {
 			panic(err)
 		}
 		if isMatch && !f.IsDir() {
-			ret = append(ret, f.Name())
+			ret = append(ret, filepath.Join(basePath, f.Name()))
 		}
 	}
 	return
