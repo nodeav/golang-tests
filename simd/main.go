@@ -5,20 +5,22 @@ import (
 	DB "simd/simd/search"
 	"fmt"
 	"time"
+	"gonum.org/v1/gonum/blas/blas64"
 )
 
 func main() {
-	const amountCands = 256
-	const dbLen = 1.5e6
+	const amountCands = 128
+	const dbLen = 5e5
 	const workers = 8
 	const workStep = dbLen/workers
 
-	db := &DB.Linear{Size: dbLen}
-	cands := &DB.Linear{Size: amountCands}
+	searcher := &DB.Linear{}
+
+	var db, cands []blas64.Vector
 
 	start := time.Now()
-	db.InitRandom()
-	cands.InitRandom()
+	DB.InitRandom(&cands, amountCands)
+	DB.InitRandom(&db, dbLen)
 	end := time.Now()
 	initTook := end.Sub(start)
 	fmt.Println("init took", initTook)
@@ -33,7 +35,7 @@ func main() {
 	for i := 0; i < workers; i++ {
 		from := i * workStep
 		to := from + workStep
-		go db.SearchWaitGroup(cands.Vectors, 0.55, &g, from, to, results)
+		go searcher.WaitGroupF64(db, cands, 0.45, &g, from, to, results)
 	}
 
 	g.Wait()
@@ -49,6 +51,7 @@ func main() {
 			}
 		}
 	}
+	
 	end = time.Now()
 	ftook := end.Sub(start)
 	numSearches := amountCands*dbLen

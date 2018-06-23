@@ -5,7 +5,8 @@ import 	(
 )
 
 
-type DB interface {
-	SearchFloat64(candidates []blas64.Vector, threshold float64, from, to, results []float64)
-	SearchChan(candidates []blas64.Vector, threshold float64, from, to, results chan[]float64)
+type Searcher interface {
+	Float64(db, candidates []blas64.Vector, threshold float64, from, to int, results [][]int)
+	Chan(db, candidates []blas64.Vector, threshold float64, from, to int, results chan[]float64)
+	WaitGroupF64(db, candidates []blas64.Vector, threshold float64, from, to int, results [][]int)
 }
