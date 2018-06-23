@@ -3,6 +3,7 @@ package main
 import (
 	"sync"
 	DB "simd/simd/search"
+	"simd/simd/storage"
 	"fmt"
 	"time"
 	"gonum.org/v1/gonum/blas/blas64"
@@ -13,6 +14,8 @@ func main() {
 	const dbLen = 5e5
 	const workers = 8
 	const workStep = dbLen/workers
+
+	fmt.Println("loaded files:", storage.Readdir("./db"))
 
 	searcher := &DB.Linear{}
 
@@ -51,7 +54,7 @@ func main() {
 			}
 		}
 	}
-	
+
 	end = time.Now()
 	ftook := end.Sub(start)
 	numSearches := amountCands*dbLen
