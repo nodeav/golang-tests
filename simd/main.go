@@ -11,29 +11,30 @@ import (
 
 func main() {
 	const amountCands = 128
-	const dbLen = 5e5
+	const dbLen = 6e2
 	const workers = 8
 	const workStep = dbLen/workers
 
 	fmt.Println("loaded files:", storage.Readdir("./db"))
-
+	s := storage.Basic{}
 	searcher := &DB.Linear{}
 
 	var db, cands []blas64.Vector
 
 	start := time.Now()
 	DB.InitRandom(&cands, amountCands)
-	DB.InitRandom(&db, dbLen)
+	//DB.InitRandom(&db, dbLen)
+	s.Load("./db", db)
 	end := time.Now()
 	initTook := end.Sub(start)
 	fmt.Println("init took", initTook)
 
-	store := &storage.Basic{}
-	start = time.Now()
-	store.Store("./db", db)
-	end = time.Now()
-	fsave := end.Sub(start)
-	fmt.Println("File saving took:", fsave)
+	//store := &storage.Basic{}
+	//start = time.Now()
+	//store.Store("./db", db)
+	//end = time.Now()
+	//fsave := end.Sub(start)
+	//fmt.Println("File saving took:", fsave)
 
 	g := sync.WaitGroup{}
 	g.Add(workers)
