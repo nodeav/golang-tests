@@ -1,19 +1,19 @@
 package main
 
 import (
-	"sync"
+	"fmt"
+	"gonum.org/v1/gonum/blas/blas64"
 	DB "simd/simd/search"
 	"simd/simd/storage"
-	"fmt"
+	"sync"
 	"time"
-	"gonum.org/v1/gonum/blas/blas64"
 )
 
 func main() {
 	const amountCands = 128
 	const dbLen = 6e2
 	const workers = 8
-	const workStep = dbLen/workers
+	const workStep = dbLen / workers
 
 	fmt.Println("loaded files:", storage.Readdir("./db"))
 	s := storage.Basic{}
@@ -53,7 +53,7 @@ func main() {
 	g.Wait()
 	end = time.Now()
 	took := end.Sub(start)
-	tookPer := took / (dbLen*amountCands)
+	tookPer := took / (dbLen * amountCands)
 	start = time.Now()
 	var nResults int
 	for i := range results {
@@ -66,6 +66,6 @@ func main() {
 
 	end = time.Now()
 	ftook := end.Sub(start)
-	numSearches := amountCands*dbLen
-	fmt.Println("got numResults:", nResults, "out of", numSearches,"\ntook:", took, "\ntook per vec", tookPer, "\nfilterting took", ftook)
+	numSearches := amountCands * dbLen
+	fmt.Println("got numResults:", nResults, "out of", numSearches, "\ntook:", took, "\ntook per vec", tookPer, "\nfilterting took", ftook)
 }
