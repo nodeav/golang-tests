@@ -1,24 +1,25 @@
 package search
 
 import (
-	"gonum.org/v1/gonum/blas/blas64"
-	"sync"
 	"errors"
-	"math/rand"
 	"fmt"
+	"gonum.org/v1/gonum/blas/blas64"
+	"math/rand"
+	"sync"
 )
-type Linear struct  {
+
+type Linear struct {
 	Searcher
 }
 
 func (Linear) WaitGroupF64(
-	vecs		[]blas64.Vector,
-	candidates 	[]blas64.Vector,
-	threshold 	float64,
-	group 		*sync.WaitGroup,
-	from 		int,
-	to 			int,
-	results 	[][]int) (err error) {
+	vecs []blas64.Vector,
+	candidates []blas64.Vector,
+	threshold float64,
+	group *sync.WaitGroup,
+	from int,
+	to int,
+	results [][]int) (err error) {
 
 	defer group.Done()
 	if cap(results) < len(candidates) {
@@ -40,14 +41,14 @@ func (Linear) WaitGroupF64(
 	return
 }
 
-func shuf (slice []float64) (res []float64) {
+func shuf(slice []float64) (res []float64) {
 	res = make([]float64, len(slice))
 	copy(res, slice)
 	shufInPlace(&res)
 	return
 }
 
-func shufInPlace (slc *[]float64) {
+func shufInPlace(slc *[]float64) {
 	rand.Shuffle(len(*slc), func(i, j int) {
 		(*slc)[i], (*slc)[j] = (*slc)[j], (*slc)[i]
 	})

@@ -1,33 +1,34 @@
 package storage
+
 import (
-	"os"
-	"path/filepath"
-	"gonum.org/v1/gonum/blas/blas64"
-	"sync"
-	"time"
-	"fmt"
+	"bufio"
 	"encoding/binary"
+	"fmt"
+	"gonum.org/v1/gonum/blas/blas64"
 	"io"
 	"math"
-	"bufio"
+	"os"
+	"path/filepath"
+	"sync"
+	"time"
 )
 
 type Basic struct {
-	currfile 		*os.File
-	currfilename	string
-	vecsInFile 		int
-	lock 			sync.Mutex
+	currfile     *os.File
+	currfilename string
+	vecsInFile   int
+	lock         sync.Mutex
 	Storage
 }
 
 const dbExt = ".vecs"
-const VectSizeOnDisk = 256 * 8 + 4 + 4
+const VectSizeOnDisk = 256*8 + 4 + 4
 
 func WriteVect(w io.Writer, v *blas64.Vector) {
 	length := len(v.Data)
 	size := make([]byte, 4)
 	inc := make([]byte, 4)
-	data := make([]byte, 8 * length)
+	data := make([]byte, 8*length)
 
 	binary.LittleEndian.PutUint32(size, uint32(length))
 	binary.LittleEndian.PutUint32(inc, uint32(v.Inc))
@@ -66,7 +67,7 @@ func Readdir(basePath string) (ret []string) {
 	return
 }
 
-func (b *Basic) getNewFile(filename string, basePath string) (error) {
+func (b *Basic) getNewFile(filename string, basePath string) error {
 	newFilename := filepath.Join(basePath, filename)
 	flags := os.O_WRONLY | os.O_APPEND | os.O_CREATE
 	file, err := os.OpenFile(newFilename, flags, 0755)
@@ -112,9 +113,9 @@ func deserializeVector(buf []byte) (ret blas64.Vector) {
 	ret.Data = make([]float64, size)
 	ret.Inc = inc
 	idx := 0
-	for i := 8; i < VectSizeOnDisk; i+=8 {
+	for i := 8; i < VectSizeOnDisk; i += 8 {
 		from := i
-		to := i+8
+		to := i + 8
 		bits := binary.LittleEndian.Uint64(buf[from:to])
 		float := math.Float64frombits(bits)
 		ret.Data[idx] = float
@@ -141,8 +142,6 @@ func loadFile(path string, db *[]blas64.Vector) {
 	idx := 0
 	reader := bufio.NewReader(f)
 
-
-
 	for true {
 		n, err := reader.Read(buf)
 		//fmt.Println("n is", n)
@@ -168,7 +167,7 @@ func loadFile(path string, db *[]blas64.Vector) {
 			}
 		}
 
-		for i := 0; numVecs - idx > 0 && i < len(buf) / VectSizeOnDisk; i++ {
+		for i := 0; numVecs-idx > 0 && i < len(buf)/VectSizeOnDisk; i++ {
 			//fmt.Println("numVecs - idx", numVecs - idx)
 			from := i * VectSizeOnDisk
 			to := from + VectSizeOnDisk
@@ -218,6 +217,6 @@ func (b *Basic) Load(basePath string, db *[]blas64.Vector) {
 	}
 }
 
-func (b Basic) LoadChan(basePath string, vecs <-chan[]blas64.Vector) {
+func (b Basic) LoadChan(basePath string, vecs <-chan []blas64.Vector) {
 
 }
