@@ -26,8 +26,10 @@ func (Linear) WaitGroupF64(
 		err = errors.New(str)
 		return
 	}
+
 	for i := from; i < to; i++ {
 		for j := 0; j < len(candidates); j++ {
+			//fmt.Println("accessing vecs[i]:", len(vecs), i, "with from to", from, to)
 			result := blas64.Dot(1, candidates[j], vecs[i])
 			if result > threshold {
 				results[j][i] = i

@@ -29,7 +29,6 @@ func WriteVect(w io.Writer, v *blas64.Vector) {
 	inc := make([]byte, 4)
 	data := make([]byte, 8 * length)
 
-
 	binary.LittleEndian.PutUint32(size, uint32(length))
 	binary.LittleEndian.PutUint32(inc, uint32(v.Inc))
 
@@ -108,9 +107,10 @@ func deserializeVector(buf []byte) (ret blas64.Vector) {
 	}
 	//fmt.Println("got buf", buf[:4], "with len", len(buf))
 	size := binary.LittleEndian.Uint32(buf[0:4])
-	//fmt.Println("using size", size)
+	inc := int(binary.LittleEndian.Uint32(buf[4:8]))
+
 	ret.Data = make([]float64, size)
-	ret.Inc = int(binary.LittleEndian.Uint32(buf[4:8]))
+	ret.Inc = inc
 	idx := 0
 	for i := 8; i < VectSizeOnDisk; i+=8 {
 		from := i
@@ -123,7 +123,7 @@ func deserializeVector(buf []byte) (ret blas64.Vector) {
 	return
 }
 
-func loadFile(path string) (res []blas64.Vector) {
+func loadFile(path string, db *[]blas64.Vector) {
 	f, err := os.Open(path)
 	defer f.Close()
 
@@ -131,45 +131,90 @@ func loadFile(path string) (res []blas64.Vector) {
 	if err != nil {
 		panic(err)
 	}
-	numVecs := info.Size() / VectSizeOnDisk
+	numVecs := int(info.Size() / VectSizeOnDisk)
 	fmt.Println("Going to load", numVecs, "vectors!")
-	res = make([]blas64.Vector, numVecs)
+	*db = make([]blas64.Vector, numVecs)
 
 	buf := make([]byte, 64*VectSizeOnDisk)
-	buf2 := make([]byte, 0, 2*64*VectSizeOnDisk)
+	var tmp, tmp2 []byte
 
+	idx := 0
 	reader := bufio.NewReader(f)
+
+
+
 	for true {
 		n, err := reader.Read(buf)
-		buf2 = append(buf2, buf...)
-		for i := 0 ;; i++ {
-			from := i * VectSizeOnDisk
-			to := from + VectSizeOnDisk
-			maybeVect := buf2[from:to]
-			if n >= VectSizeOnDisk {
-				//fmt.Println("Sending buf", maybeVect[0:4], "with len", len(maybeVect))
-				res = append(res, deserializeVector(maybeVect))
-				n -= VectSizeOnDisk
-			} else {
-				rest := buf[from:from+n]
-				//fmt.Println("Copying", rest, "with len", len(rest))
-				copy(buf2, rest)
-				break
-			}
-		}
-		if err == io.EOF {
+		//fmt.Println("n is", n)
+		if err == io.EOF || n == 0 {
 			break
 		} else if err != nil {
 			panic(err)
 		}
-	}
 
-	return
+		tmpLen := len(tmp)
+
+		if tmpLen > 0 {
+			tmp2 = make([]byte, 0, VectSizeOnDisk)
+
+			copy(tmp2, tmp)
+			copy(tmp2[tmpLen:], buf[:VectSizeOnDisk-tmpLen])
+			buf = buf[tmpLen:]
+
+			//fmt.Println("tmp2 len:", len(tmp2))
+			if len(tmp2) == VectSizeOnDisk {
+				(*db)[idx] = deserializeVector(tmp2)
+				idx++
+			}
+		}
+
+		for i := 0; numVecs - idx > 0 && i < len(buf) / VectSizeOnDisk; i++ {
+			//fmt.Println("numVecs - idx", numVecs - idx)
+			from := i * VectSizeOnDisk
+			to := from + VectSizeOnDisk
+			//fmt.Println("from, to", from, to)
+			//fmt.Println("buf is", len(buf))
+			//fmt.Println("idx is", idx)
+
+			(*db)[idx] = deserializeVector(buf[from:to])
+			idx++
+		}
+
+		//buf2 = append(buf2, buf...)
+		//for i := 0 ;; i++ {
+		//	from := i * VectSizeOnDisk
+		//	to := from + VectSizeOnDisk
+		//	fmt.Println("from, to", from, to)
+		//	maybeVect := buf2[from:to]
+		//	if n >= VectSizeOnDisk {
+		//		if n == 0 {
+		//			fmt.Printf("n is 0: from: %d, to: %d, len(MV): %d", from, to, len(maybeVect))
+		//			fmt.Println("maybeVect:", maybeVect)
+		//		}
+		//		(*db)[i] = deserializeVector(maybeVect)
+		//		n -= VectSizeOnDisk
+		//		idx++
+		//	} else {
+		//		remaining := n%VectSizeOnDisk
+		//		if n == 0 {
+		//			remaining = len(buf2)
+		//		}
+		//		from := 0
+		//		to := from+remaining
+		//		fmt.Printf("n is %d, remaining is %d, from is %d\n", n, remaining, from)
+		//		rest := make([]byte, remaining)
+		//		copy(rest, buf2[from:to])
+		//		fmt.Printf("Copying %d bytes to buf2, which is %d bytes long; ", len(rest), len(buf2))
+		//		fmt.Printf("buf2 after copy is %d bytes long\n", len(buf2))
+		//
+		//	}
+		//}
+	}
 }
 
-func (b Basic) Load(basePath string, vecs []blas64.Vector) {
+func (b *Basic) Load(basePath string, db *[]blas64.Vector) {
 	for _, path := range Readdir(basePath) {
-		vecs = append(vecs, loadFile(path)...)
+		loadFile(path, db)
 	}
 }
 

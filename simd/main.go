@@ -11,7 +11,7 @@ import (
 
 func main() {
 	const amountCands = 128
-	const dbLen = 6e2
+	const dbLen = 1e3
 	const workers = 8
 	const workStep = dbLen / workers
 
@@ -24,7 +24,7 @@ func main() {
 	start := time.Now()
 	DB.InitRandom(&cands, amountCands)
 	//DB.InitRandom(&db, dbLen)
-	s.Load("./db", db)
+	s.Load("./db", &db)
 	end := time.Now()
 	initTook := end.Sub(start)
 	fmt.Println("init took", initTook)
@@ -42,6 +42,14 @@ func main() {
 	for i := range results {
 		results[i] = make([]int, dbLen)
 	}
+
+	numNoInc := 0
+	for i := 0; i < len(db); i++ {
+		if db[i].Inc != 1 {
+			numNoInc++
+		}
+	}
+	fmt.Printf("There are %d with inc==1 and %d without\n", len(db)-numNoInc, numNoInc)
 
 	start = time.Now()
 	for i := 0; i < workers; i++ {
