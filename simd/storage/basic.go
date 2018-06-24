@@ -106,7 +106,7 @@ func deserializeVector(buf []byte) (ret blas64.Vector) {
 	if len(buf) < VectSizeOnDisk {
 		panic("deserializeVector requires a specific size of buffer")
 	}
-	//fmt.Println("got buf", buf[:4], "with len", len(buf))
+
 	size := binary.LittleEndian.Uint32(buf[0:4])
 	inc := int(binary.LittleEndian.Uint32(buf[4:8]))
 
@@ -136,7 +136,7 @@ func loadFile(path string, db *[]blas64.Vector) {
 	fmt.Println("Going to load", numVecs, "vectors!")
 	*db = make([]blas64.Vector, numVecs)
 
-	buf := make([]byte, 64*VectSizeOnDisk)
+	buf := make([]byte, 1024*VectSizeOnDisk)
 	var tmp, tmp2 []byte
 
 	idx := 0
@@ -144,7 +144,7 @@ func loadFile(path string, db *[]blas64.Vector) {
 
 	for true {
 		n, err := reader.Read(buf)
-		//fmt.Println("n is", n)
+
 		if err == io.EOF || n == 0 {
 			break
 		} else if err != nil {
@@ -160,7 +160,6 @@ func loadFile(path string, db *[]blas64.Vector) {
 			copy(tmp2[tmpLen:], buf[:VectSizeOnDisk-tmpLen])
 			buf = buf[tmpLen:]
 
-			//fmt.Println("tmp2 len:", len(tmp2))
 			if len(tmp2) == VectSizeOnDisk {
 				(*db)[idx] = deserializeVector(tmp2)
 				idx++
@@ -168,46 +167,11 @@ func loadFile(path string, db *[]blas64.Vector) {
 		}
 
 		for i := 0; numVecs-idx > 0 && i < len(buf)/VectSizeOnDisk; i++ {
-			//fmt.Println("numVecs - idx", numVecs - idx)
 			from := i * VectSizeOnDisk
 			to := from + VectSizeOnDisk
-			//fmt.Println("from, to", from, to)
-			//fmt.Println("buf is", len(buf))
-			//fmt.Println("idx is", idx)
-
 			(*db)[idx] = deserializeVector(buf[from:to])
 			idx++
 		}
-
-		//buf2 = append(buf2, buf...)
-		//for i := 0 ;; i++ {
-		//	from := i * VectSizeOnDisk
-		//	to := from + VectSizeOnDisk
-		//	fmt.Println("from, to", from, to)
-		//	maybeVect := buf2[from:to]
-		//	if n >= VectSizeOnDisk {
-		//		if n == 0 {
-		//			fmt.Printf("n is 0: from: %d, to: %d, len(MV): %d", from, to, len(maybeVect))
-		//			fmt.Println("maybeVect:", maybeVect)
-		//		}
-		//		(*db)[i] = deserializeVector(maybeVect)
-		//		n -= VectSizeOnDisk
-		//		idx++
-		//	} else {
-		//		remaining := n%VectSizeOnDisk
-		//		if n == 0 {
-		//			remaining = len(buf2)
-		//		}
-		//		from := 0
-		//		to := from+remaining
-		//		fmt.Printf("n is %d, remaining is %d, from is %d\n", n, remaining, from)
-		//		rest := make([]byte, remaining)
-		//		copy(rest, buf2[from:to])
-		//		fmt.Printf("Copying %d bytes to buf2, which is %d bytes long; ", len(rest), len(buf2))
-		//		fmt.Printf("buf2 after copy is %d bytes long\n", len(buf2))
-		//
-		//	}
-		//}
 	}
 }
 
