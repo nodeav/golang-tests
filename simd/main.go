@@ -60,10 +60,14 @@ func loadDB(dbPath string) {
 }
 
 func main() {
-	var load = *flag.Bool("load", true, "Benchmark loading the db")
-	var save = *flag.Bool("save", true, "Benchmark saving the db")
-	var dbPath = *flag.String("db", "./db", "Path to load/save the db. (Should exist)")
-	var dbSize = *flag.Int("size", 5e5, "Amount of db entries")
+	var load, save bool
+	var dbPath string
+	var dbSize int
+
+	flag.BoolVar(&load, "load", true, "Benchmark loading the db")
+	flag.BoolVar(&save, "save", true, "Benchmark saving the db")
+	flag.StringVar(&dbPath,"db", "./db", "Path to load/save the db. (Should exist)")
+	flag.IntVar(&dbSize, "size", 5e5, "Amount of db entries")
 	flag.Parse()
 
 	flag.VisitAll(func (f *flag.Flag) {
@@ -71,11 +75,13 @@ func main() {
 	})
 
 	if save {
+		fmt.Println("save is", save)
 		purge()
 		saveDB(dbPath, dbSize)
 	}
 
 	if load {
+		fmt.Println("load is", load)
 		purge()
 		loadDB(dbPath)
 	}
