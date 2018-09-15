@@ -54,6 +54,16 @@ func shufInPlace(slc *[]float64) {
 	})
 }
 
+func getVector() (ret blas64.Vector) {
+	var arr [256]float64
+	for i := 0; i < 256; i++ {
+		arr[i] = rand.Float64()
+	}
+	vect := blas64.Vector{Inc: 1, Data: arr[:]}
+	blas64.Nrm2(1, vect)
+	return vect
+}
+
 func InitRandom(container *[]blas64.Vector, sz int) {
 	const vecLen = 256
 
@@ -67,8 +77,7 @@ func InitRandom(container *[]blas64.Vector, sz int) {
 	vecData = normVec.Data
 
 	for i := range *container {
-		shufInPlace(&vecData)
-		(*container)[i] = blas64.Vector{Inc: 1, Data: vecData}
+		(*container)[i] = getVector()
 	}
 	return
 }

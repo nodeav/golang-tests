@@ -5,43 +5,50 @@ import (
 	"gonum.org/v1/gonum/blas/blas64"
 	DB "simd/simd/search"
 	"simd/simd/storage"
-	"sync"
 	"time"
+	"flag"
+	"os/exec"
 )
 
-func main() {
-	const amountCands = 128
-	const dbLen = 1e3
-	const workers = 8
-	const workStep = dbLen / workers
-
-	fmt.Println("loaded files:", storage.Readdir("./db"))
-	s := storage.Basic{}
-	searcher := &DB.Linear{}
-
-	var db, cands []blas64.Vector
-
-	start := time.Now()
-	DB.InitRandom(&cands, amountCands)
-	//DB.InitRandom(&db, dbLen)
-	s.Load("./db", &db)
-	end := time.Now()
-	initTook := end.Sub(start)
-	fmt.Println("init took", initTook)
-
-	//store := &storage.Basic{}
-	//start = time.Now()
-	//store.Store("./db", db)
-	//end = time.Now()
-	//fsave := end.Sub(start)
-	//fmt.Println("File saving took:", fsave)
-
-	g := sync.WaitGroup{}
-	g.Add(workers)
-	results := make([][]int, amountCands)
-	for i := range results {
-		results[i] = make([]int, dbLen)
+func purge() {
+	purgeStart := time.Now()
+	cmd := exec.Command("purge")
+	err := cmd.Run()
+	if err != nil {
+		panic(err)
 	}
+	fmt.Println("purge took", time.Now().Sub(purgeStart))
+	time.Sleep(1 * time.Second)
+}
+
+func saveDB(dbPath string, dbSize int) {
+	var db []blas64.Vector
+
+	initRandomStart := time.Now()
+	DB.InitRandom(&db, dbSize)
+	initRandomTook := time.Now().Sub(initRandomStart)
+	fmt.Println("Initializing a random DB took", initRandomTook)
+	fmt.Printf("< save > Some of db: %+v\n", db[0].Data[:4])
+
+	store := &storage.Basic{}
+	start := time.Now()
+	store.Store(dbPath, db)
+	end := time.Now()
+	fsave := end.Sub(start)
+	fmt.Println("Save took:", fsave)
+}
+
+func loadDB(dbPath string) {
+	fmt.Println("DB directory contains these files:", storage.Readdir(dbPath))
+
+	var db []blas64.Vector
+	s := storage.Basic{}
+	loadStart := time.Now()
+	s.Load(dbPath, &db)
+	loadEnd := time.Now()
+	fmt.Printf("< load > Some of db: %+v\n", db[0].Data[:4])
+	loadTook := loadEnd.Sub(loadStart)
+	fmt.Println("Load took:", loadTook)
 
 	numNoInc := 0
 	for i := 0; i < len(db); i++ {
@@ -49,31 +56,27 @@ func main() {
 			numNoInc++
 		}
 	}
-	fmt.Printf("There are %d with inc==1 and %d without\n", len(db)-numNoInc, numNoInc)
+	fmt.Printf("Found [ %d ] entries of which [ %d ] were invalid\n", len(db)-numNoInc, numNoInc)
+}
 
-	start = time.Now()
-	for i := 0; i < workers; i++ {
-		from := i * workStep
-		to := from + workStep
-		go searcher.WaitGroupF64(db, cands, 0.45, &g, from, to, results)
+func main() {
+	var load = *flag.Bool("load", true, "Benchmark loading the db")
+	var save = *flag.Bool("save", true, "Benchmark saving the db")
+	var dbPath = *flag.String("db", "./db", "Path to load/save the db. (Should exist)")
+	var dbSize = *flag.Int("size", 5e5, "Amount of db entries")
+	flag.Parse()
+
+	flag.VisitAll(func (f *flag.Flag) {
+		fmt.Println("Key", f.Name, "Value", f.Value)
+	})
+
+	if save {
+		purge()
+		saveDB(dbPath, dbSize)
 	}
 
-	g.Wait()
-	end = time.Now()
-	took := end.Sub(start)
-	tookPer := took / (dbLen * amountCands)
-	start = time.Now()
-	var nResults int
-	for i := range results {
-		for _, x := range results[i] {
-			if x != 0 {
-				nResults++
-			}
-		}
+	if load {
+		purge()
+		loadDB(dbPath)
 	}
-
-	end = time.Now()
-	ftook := end.Sub(start)
-	numSearches := amountCands * dbLen
-	fmt.Println("got numResults:", nResults, "out of", numSearches, "\ntook:", took, "\ntook per vec", tookPer, "\nfilterting took", ftook)
 }

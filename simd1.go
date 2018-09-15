@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"gonum.org/v1/gonum/blas/blas64"
-	"gonum.org/v1/netlib/blas/netlib"
+	//"gonum.org/v1/netlib/blas/netlib"
 	"gonum.org/v1/gonum/floats"
 	"math"
 	"math/rand"
@@ -12,7 +12,7 @@ import (
 )
 
 const vecLen = 256
-const tasks = 5e5
+const tasks = 5e4
 const runs = 1e3
 const threads = 8
 const threshold = 0.4
@@ -87,7 +87,7 @@ func filterResults(results [tasks]float64) (matches []int) {
 
 func main() {
 
-	blas64.Use(netlib.Implementation{})
+	//blas64.Use(netlib.Implementation{})
 
 	fmt.Println("Initializing vectors DB (this might take a while) for", toHuman(tasks, true), "vectors")
 	fmt.Println("Going to use", toHuman(8*256*tasks, false)+"B", "Memory for DB")
